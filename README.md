@@ -113,6 +113,11 @@ pip install -r requirements.txt
 
 # Running Experiments
 
+> **Core Experimental Settings:**
+> - **Hardware:** Single NVIDIA H100 (80GB).
+> - **Decoding Strategy:** Greedy decoding (temperature = 0).
+> - **Random Seed:** 0.
+
 ### 5.1 Data Setup
 
 Place all original benchmark source files into `data/raw/`. The pipeline code specific to your backbone model configuration (e.g., `Qwen3-30B-A3B-Instruct-2507`) should be systematically structured under `data/Qwen3-30B-A3B-Instruct-2507/`.
@@ -146,3 +151,5 @@ To automatically compute automated evaluation metrics for your generated transla
 ```bash
 bash eval.sh
 ```
+
+Note on Cache: The evaluation process will automatically download or generate metric cache files. These files are stored locally in the KnT-master/KnT/cache/ directory.
