@@ -366,7 +366,7 @@ def parse_args():
     parser.add_argument("--comet-kiwi-model-name", type=str, default="wmt23-cometkiwi-da-xl")
     parser.add_argument("--comet-qe-model-name", type=str, default="wmt21-comet-qe-da")
     parser.add_argument("--comet-model-name", type=str, default="Unbabel/wmt22-comet-da")
-    parser.add_argument("--comet-saving-dir", type=str, default="/hom......./code/MAPS_cot")
+    parser.add_argument("--comet-saving-dir", type=str, default="/hom......./code/KnT")
     parser.add_argument("--comet-cache-dir", type=str, default=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'cache', 'comet'))
     parser.add_argument("--traditional-cache-dir", type=str,
                     default=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'cache', 'traditional'),
