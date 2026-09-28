@@ -1,6 +1,6 @@
 # Official Repo of Knowledge-to-Translation (KnT)
 
-Official implementation of **KnT: A Multi-Source Knowledge-Driven Framework for Low-Resource Machine Translation** with complete pipelines, scripts, and model outputs.
+Official implementation of **Are Reasoning and Refining Really Helpful for LLM-based Machine Translation in Low-Resource Scenarios?**, which proposes *Knowledge-to-Translation* (**KnT**), with complete pipelines, scripts, and model outputs.
 
 <p align="center">
   <img src="image/Figure1.png" alt="Figure 1" width="80%">
@@ -64,36 +64,46 @@ The KnT framework is comprehensively evaluated across **6 major MT benchmarks**,
 | **CCMT-2025** | `en-zh`, `ug-zh`, `bo-zh` |
 | **Tico-19** | `en-bn`, `en-ur`, `zh-bn`, `zh-ur` |
 
+`test_name` is the prefix used by the files in `data/raw/` and by the folders under `output/`.
+
 > *Note on Language Codes: `fa` (Persian), `lo` (Lao), `ur` (Urdu), `uz` (Uzbek), `bn` (Bengali), `ug` (Uyghur), `bo` (Tibetan), `he` (Hebrew), `id` (Indonesian), `vi` (Vietnamese), `zh` (Chinese), `en` (English).*
 
 ---
 
 # Repository Structure
 ```text
-KnT-master/
-├── data/
-│   ├── raw/                               # Raw benchmark source datasets
-│   └── Qwen3-30B-A3B-Instruct-2507/        # Data processing and prompt construction code
-├── model/
-│   └── Qwen3-30B-A3B-Instruct-2507/
-│       └── translate.py                   # Main inference script executing the LLM translation
-├── scripts/
-│   ├── knowledge-selection.py            # Filters and selects optimal knowledge components
-│   └── score.py                          # Evaluation script calculating translation metrics (e.g., BLEU, COMET)
-├── output/
-│   └── Qwen3-30B-A3B-Instruct-2507/       # Saved output directories organized by model
-│       └── flores200.en-fa/               # Example: English-to-Persian outputs
-│           ├── flores200.en-fa.en.demo    # Extracted Exemplar Knowledge
-│           ├── flores200.en-fa.en.cod     # Chain-of-Dictionary Knowledge
-│           ├── flores200.en-fa.en.topic   # Topic-Level Knowledge
-│           ├── flores200.en-fa.en.dw      # Difficult Word Explanations
-│           ├── flores200.en-fa.fa.demo    # Translation via Exemplar Knowledge
-│           ├── flores200.en-fa.fa.cod     # Translation via Chain-of-Dictionary Knowledge
-│           ├── flores200.en-fa.fa.topic   # Translation via Topic-Level Knowledge
-│           └── flores200.en-fa.fa.dw      # Translation via Difficult Word Explanations
-├── knt.sh                                 # Master runner shell script for the KnT pipeline
-├── Direct.sh                              # Runner shell script for the Zero-Shot baseline
-└── eval.sh                                # Automatically triggers evaluation across outputs
+KnT-master/                                  # Repository root
+├── README.md
+├── requirements.txt                        # Python dependencies
+├── image/                                  # Figures used in this README
+└── KnT/
+    ├── data/
+    │   ├── raw/                            # Raw benchmark source datasets
+    │   └── Qwen3-30B-A3B-Instruct-2507/     # Data processing and prompt construction code
+    ├── model/
+    │   └── Qwen3-30B-A3B-Instruct-2507/
+    │       └── translate.py                # Main inference script executing the LLM translation
+    ├── scripts/
+    │   ├── knowledge-selection.py          # Selects the best candidate per sentence with a reference-free QE model
+    │   ├── score.py                        # Evaluation script calculating translation metrics (BLEU, chrF++, COMET, XCOMET-XL, BLEURT-20)
+    │   ├── compare.py                      # Significance testing between systems (bootstrap resampling + paired t-test)
+    │   └── lang.list                       # Language name / code list used by the scripts
+    ├── output/
+    │   └── Qwen3-30B-A3B-Instruct-2507/     # Saved output directories organized by model
+    │       └── flores200.en-fa/            # Example: English-to-Persian outputs
+    │           ├── flores200.en-fa.en.demo          # Extracted Exemplar Knowledge
+    │           ├── flores200.en-fa.en.cod           # Chain-of-Dictionary Knowledge
+    │           ├── flores200.en-fa.en.topic         # Topic-Level Knowledge
+    │           ├── flores200.en-fa.en.dw            # Difficult Word Explanations
+    │           ├── flores200.en-fa.fa.beam.0-shot   # Translation by the direct (zero-shot) prompt
+    │           ├── flores200.en-fa.fa.demo          # Translation via Exemplar Knowledge
+    │           ├── flores200.en-fa.fa.cod           # Translation via Chain-of-Dictionary Knowledge
+    │           ├── flores200.en-fa.fa.topic         # Translation via Topic-Level Knowledge
+    │           ├── flores200.en-fa.fa.dw            # Translation via Difficult Word Explanations
+    │           └── flores200.en-fa.fa.knt_o_kiwi    # Final KnT output selected by CometKiwi-XL
+    ├── knt.sh                              # Master runner shell script for the KnT pipeline
+    ├── direct.sh                           # Runner shell script for the Zero-Shot baseline
+    └── eval.sh                             # Automatically triggers evaluation across outputs
 ```
 
 ---
@@ -103,11 +113,17 @@ KnT-master/
 Before running the scripts, ensure that you have configured your Python environment and installed the necessary deep learning backends (such as PyTorch and efficient inference engines like vLLM).
 
 ```bash
-git clone [https://anonymous.4open.science/r/KnT-E6F8](https://anonymous.4open.science/r/KnT-E6F8)
-cd KnT-master/
+git clone https://anonymous.4open.science/r/ours_code-C518
+cd <cloned-repo>/
 pip install -r requirements.txt
 
 ```
+
+Before running anything, note that the shell scripts are shipped as templates and have to be configured:
+
+- set `model_name`, `test_name`, `all_lang_pairs`, and `MODEL_CKPT` at the top of `knt.sh` / `direct.sh` / `eval.sh`. The scripts default to `Qwen3-32B`, whereas the released `data/` and `output/` folders correspond to `Qwen3-30B-A3B-Instruct-2507`, and `test_name` defaults to `ccmt`;
+- uncomment the step blocks you need: in `knt.sh` all five steps are commented out and each one is meant to be run on its own, while in `direct.sh` only the last step is active;
+- point the checkpoint paths at your local copies of the metrics, i.e. `--comet-saving-dir`, `--bleurt-ckpt`, and `--bleurt-cache-dir` in `scripts/score.py`, and `--comet-saving-dir` in `scripts/knowledge-selection.py`. The scripts resolve their data, format, and output folders from their own location, so they can be launched from any working directory.
 
 ---
 
@@ -115,8 +131,8 @@ pip install -r requirements.txt
 
 > **Core Experimental Settings:**
 > - **Hardware:** Single NVIDIA H100 (80GB).
-> - **Decoding Strategy:** Greedy decoding (temperature = 0).
-> - **Random Seed:** 0.
+> - **Decoding Strategy:** Greedy decoding (`--search-algorithm beam`, temperature = 0).
+> - **Random Seed:** Set through `--seed` in `translate.py` (default 0).
 
 ### 5.1 Data Setup
 
@@ -134,7 +150,7 @@ bash direct.sh
 
 To run the complete **KnT** process, execute the master shell script `knt.sh`. This script automatically sequences the workflow through three major phases:
 
-* **Knowledge Generation (Steps 1-2):** Formats the prompts and runs `translate.py` to generate source-sentence knowledge elements (`demo`, `topic`, `cod`).
+* **Knowledge Generation (Steps 1-2):** Formats the prompts and runs `translate.py` to generate the source-sentence knowledge elements (`demo`, `topic`, `cod`, and `dw` for the EN→X directions, where the explanation is produced in the target language).
 * **Knowledge-Augmented Translation (Steps 3-4):** Integrates the generated knowledge to prompt the LLM again, producing multiple distinct translation candidates.
 * **Quality Selection (Step 5):** Triggers `knowledge-selection.py` to leverage a reference-free Quality Estimation model (`wmt23-cometkiwi-da-xl`) to score all candidates and filter the best final output.
 
@@ -152,4 +168,6 @@ To automatically compute automated evaluation metrics for your generated transla
 bash eval.sh
 ```
 
-Note on Cache: The evaluation process will automatically download or generate metric cache files. These files are stored locally in the KnT-master/KnT/cache/ directory.
+By default `eval.sh` scores only the final KnT output (`*.knt_o_kiwi`) with XCOMET-XL and BLEURT-20; add the other candidate paths to `CANDS` inside the script to score the intermediate candidates as well.
+
+Note on Cache: The evaluation process will automatically download or generate metric cache files. The COMET and traditional-metric caches are stored locally in the `KnT/cache/` directory (`cache/comet` and `cache/traditional`), while the BLEURT cache and the COMET / BLEURT-20 checkpoint paths are hard-coded placeholders in `scripts/score.py` and `scripts/knowledge-selection.py` and must be edited to your local paths before running.
