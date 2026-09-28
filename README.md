@@ -33,7 +33,7 @@ KnT addresses this limitation by injecting multi-dimensional, structured knowled
 * **Exemplar Knowledge (`.demo`):** Dynamically generates contextually relevant translation demonstrations tailored specifically to the structural or semantic features of the source sentence.
 * **Chain-of-Dictionary (`.cod`):** Extracts key words from the source sentence to adaptively construct lexical reasoning chains, linking specific source words to their target dictionary translations.
 * **Topic Knowledge (`.topic`):** Extracts sentence-level thematic background information to guide the semantic focus of the translation.
-* **Difficult Words (`.dw`):** Identifies low-frequency or ambiguous tokens in the source text and provides explicit word-level explanations.
+* **Difficult Words (`.dw`):** Identifies low-frequency or ambiguous tokens in the source text and provides explicit word-level explanations. Unlike the other three types, it is constructed differently for high-resource→low-resource and low-resource→high-resource translation (see §5.3).
 
 <p align="center">
   <img src="image/Figure2.png" alt="Figure 2" width="90%">
@@ -86,7 +86,6 @@ KnT-master/                                  # Repository root
     ├── scripts/
     │   ├── knowledge-selection.py          # Selects the best candidate per sentence with a reference-free QE model
     │   ├── score.py                        # Evaluation script calculating translation metrics (BLEU, chrF++, COMET, XCOMET-XL, BLEURT-20)
-    │   ├── compare.py                      # Significance testing between systems (bootstrap resampling + paired t-test)
     │   └── lang.list                       # Language name / code list used by the scripts
     ├── output/
     │   └── Qwen3-30B-A3B-Instruct-2507/     # Saved output directories organized by model
@@ -150,9 +149,11 @@ bash direct.sh
 
 To run the complete **KnT** process, execute the master shell script `knt.sh`. This script automatically sequences the workflow through three major phases:
 
-* **Knowledge Generation (Steps 1-2):** Formats the prompts and runs `translate.py` to generate the source-sentence knowledge elements (`demo`, `topic`, `cod`, and `dw` for the EN→X directions, where the explanation is produced in the target language).
+* **Knowledge Generation (Steps 1-2):** Formats the prompts and runs `translate.py` to generate the source-sentence knowledge elements (`demo`, `topic`, `cod`, `dw`).
 * **Knowledge-Augmented Translation (Steps 3-4):** Integrates the generated knowledge to prompt the LLM again, producing multiple distinct translation candidates.
 * **Quality Selection (Step 5):** Triggers `knowledge-selection.py` to leverage a reference-free Quality Estimation model (`wmt23-cometkiwi-da-xl`) to score all candidates and filter the best final output.
+
+> **Note on `dw` (difficult words):** this is the only knowledge type that is constructed differently in the two directions. For high-resource→low-resource translation (e.g., EN→X), the difficult-word knowledge is generated as usual, i.e. the model explains the difficult words in the target language, and that explanation is then used to guide the translation (`format_ask_dw.py` → `format_dw_HL.py`). For low-resource→high-resource translation (X→EN), no difficult-word knowledge is generated: the prompt only asks the model to pay attention to the wording of the source sentence and to translate it directly in a single step (`format_dw_LH.py`).
 
 ```bash
 bash knt.sh
