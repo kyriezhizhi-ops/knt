@@ -135,7 +135,7 @@ def comet_qe(**kwargs):
     logging.info(f"COMET-QE cache info: {len(sys_lines)-len(data)}/{len(sys_lines)}")
     if data:
         if comet_qe_model_name in comet_model_mapping:
-            model_path = "/....//comet_model/wmt21-comet-qe-da/checkpoints/model.ckpt"
+            model_path = "..../comet_model/wmt21-comet-qe-da/checkpoints/model.ckpt"
             comet_model = load_from_checkpoint(model_path, reload_hparams=True, local_files_only=True)
         else:
             model_path = "..../comet_model/wmt21-comet-qe-da/checkpoints/model.ckpt"
@@ -172,13 +172,10 @@ def comet_qe(**kwargs):
 def comet_kiwi(**kwargs):
     sys_lines = kwargs["sys_lines"]
     src_lines = kwargs["src_lines"]
-    # 保持参数命名风格一致
     comet_kiwi_model_name = kwargs["comet_kiwi_model_name"]
     comet_saving_dir = kwargs["comet_saving_dir"]
     comet_cache_dir = kwargs["comet_cache_dir"]
     batch_size = kwargs["batch_size"]
-    
-    # 仅修改缓存文件名，防止得分混淆
     cache_file = os.path.join(comet_cache_dir, 'comet_kiwi_cache.json')
 
     cache_lock = threading.Lock()
@@ -197,7 +194,6 @@ def comet_kiwi(**kwargs):
         if cache_key not in cache:
             new_sys_lines.append(sys)
             new_src_lines.append(src)
-            # 结构与 comet_qe 保持一致
             data.append({"mt": sys, "src": src, "ref": None})
 
     logging.info(f"COMET-Kiwi cache info: {len(sys_lines)-len(data)}/{len(sys_lines)}")
@@ -205,7 +201,7 @@ def comet_kiwi(**kwargs):
         if comet_kiwi_model_name in comet_model_mapping:
             comet_model = load_from_checkpoint(os.path.join(comet_saving_dir, comet_model_mapping[comet_kiwi_model_name]))
         else:
-            model_path = "..../comet_model/wmt23-cometkiwi-da-xl/checkpoints/model.ckpt"
+            model_path = ".../comet_model/wmt23-cometkiwi-da-xl/checkpoints/model.ckpt"
             comet_model = load_from_checkpoint(model_path, reload_hparams=True, local_files_only=True)
 
         comet_model.eval()
@@ -242,7 +238,6 @@ def bleu(**kwargs):
     tgt_lang = kwargs["tgt_lang"]
     cache_dir = kwargs.get("traditional_cache_dir", None)
     if cache_dir is None:
-        # 回退到默认目录，避免传参遗漏
         cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'cache', 'traditional')
     os.makedirs(cache_dir, exist_ok=True)
     cache_file = os.path.join(cache_dir, 'bleu_cache.json')
@@ -256,10 +251,8 @@ def bleu(**kwargs):
         else:
             cache = {}
 
-    # 准备计算的数据
     new_sys, new_ref = [], []
     for sys, ref in zip(sys_lines, ref_lines):
-        # 缓存键包含语言，确保不同语言设置不会混用
         cache_key = json.dumps(("bleu", sys, ref, tgt_lang), ensure_ascii=False)
         if cache_key not in cache:
             new_sys.append(sys)
@@ -271,11 +264,9 @@ def bleu(**kwargs):
             scorer = BLEU(tokenize="zh")
         else:
             scorer = BLEU()
-        # sacrebleu 的 corpus_score 接受列表，这里逐句计算保留句子级分数
         scores = [scorer.corpus_score([s], [[r]]).score for s, r in zip(new_sys, new_ref)]
 
         with cache_lock:
-            # 重新读取可能被其他线程更新的缓存
             if os.path.exists(cache_file):
                 with open(cache_file, 'r') as f:
                     cache = json.load(f)
@@ -285,7 +276,6 @@ def bleu(**kwargs):
             with open(cache_file, 'w') as f:
                 json.dump(cache, f, indent=2, ensure_ascii=False)
 
-    # 获取所有句子的最终分数
     with cache_lock:
         if os.path.exists(cache_file):
             with open(cache_file, 'r') as f:
@@ -322,7 +312,6 @@ def chrf(**kwargs):
 
     logging.info(f"chrF++ cache info: {len(sys_lines)-len(new_sys)}/{len(sys_lines)}")
     if new_sys:
-        # 使用 chrF++ 默认设置：word_order=2, beta=2
         chrf_scorer = CHRF(word_order=2)
         scores = [chrf_scorer.corpus_score([s], [[r]]).score for s, r in zip(new_sys, new_ref)]
 
@@ -366,7 +355,7 @@ def parse_args():
     parser.add_argument("--comet-kiwi-model-name", type=str, default="wmt23-cometkiwi-da-xl")
     parser.add_argument("--comet-qe-model-name", type=str, default="wmt21-comet-qe-da")
     parser.add_argument("--comet-model-name", type=str, default="Unbabel/wmt22-comet-da")
-    parser.add_argument("--comet-saving-dir", type=str, default="/hom......./code/KnT")
+    parser.add_argument("--comet-saving-dir", type=str, default=".../code/KnT")
     parser.add_argument("--comet-cache-dir", type=str, default=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'cache', 'comet'))
     parser.add_argument("--traditional-cache-dir", type=str,
                     default=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'cache', 'traditional'),

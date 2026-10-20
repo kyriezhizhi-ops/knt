@@ -14,7 +14,7 @@ os.environ["TRANSFORMERS_OFFLINE"] = "1"
 comet_model_mapping = {
     "wmt21-comet-qe-da": "wmt21-comet-qe-da/checkpoints/model.ckpt",
     "Unbabel/wmt22-comet-da": "wmt22-comet-da/checkpoints/model.ckpt",
-    "Unbabel/XCOMET-XL": "XCOMET-XL/checkpoints/model.ckpt", # 新增这一行
+    "Unbabel/XCOMET-XL": "XCOMET-XL/checkpoints/model.ckpt",
     "BLEURT-20": "bleurt_model/BLEURT-20"
 }
 
@@ -61,7 +61,6 @@ def comet(**kwargs):
             model_path = "..../comet_model/wmt22-comet-da/checkpoints/model.ckpt"
             comet_model = load_from_checkpoint(model_path,local_files_only=True,reload_hparams=True)
         else:
-            # model_path = download_model(comet_model_name, saving_directory=comet_saving_dir)
             model_path = "..../comet_model/wmt22-comet-da/checkpoints/model.ckpt"
             comet_model = load_from_checkpoint(model_path,local_files_only=True, reload_hparams=True)
         comet_model.eval()
@@ -125,7 +124,6 @@ def xcomet(**kwargs):
     
     if data:
 
-            # 兜底路径（你之前提供的路径）
         model_path = "..../comet_model/XCOMET-XL/checkpoints/model.ckpt"
 
         comet_model = load_from_checkpoint(model_path, local_files_only=True, reload_hparams=True)
@@ -185,8 +183,7 @@ def comet_qe(**kwargs):
         if comet_model_name in comet_model_mapping:
             comet_model = load_from_checkpoint(os.path.join(comet_saving_dir, comet_model_mapping[comet_model_name]),local_files_only=True, reload_hparams=True)
         else:
-            # model_path = download_model(comet_model_name, saving_directory=comet_saving_dir)
-            model_path = "/..../comet_model/wmt21-comet-qe-da/checkpoints/model.ckpt"
+            model_path = "..../comet_model/wmt21-comet-qe-da/checkpoints/model.ckpt"
             comet_model = load_from_checkpoint(model_path, local_files_only=True, reload_hparams=True)
         comet_model.eval()
         model_output = comet_model.predict(data, batch_size=batch_size, gpus=1)
@@ -221,11 +218,10 @@ def bleurt(**kwargs):
     bleurt_cache_dir = kwargs["bleurt_cache_dir"]
     bleurt_ckpt = kwargs["bleurt_ckpt"]
     batch_size = kwargs["batch_size"]
-    comet_saving_dir = kwargs["comet_saving_dir"] # 确保传入了这个参数
+    comet_saving_dir = kwargs["comet_saving_dir"]
     cache_file = os.path.join(bleurt_cache_dir, 'bleurt_cache.json')
     cache_lock = threading.Lock()
 
-    # --- 修改点 1: 确保目录存在，防止 open() 报错 ---
     if not os.path.exists(bleurt_cache_dir):
         os.makedirs(bleurt_cache_dir, exist_ok=True)
 
@@ -277,7 +273,6 @@ def bleu(**kwargs):
     tgt_lang = kwargs["tgt_lang"]
     cache_dir = kwargs.get("traditional_cache_dir", None)
     if cache_dir is None:
-        # 回退到默认目录，避免传参遗漏
         cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'cache', 'traditional')
     os.makedirs(cache_dir, exist_ok=True)
     cache_file = os.path.join(cache_dir, 'bleu_cache.json')
@@ -291,10 +286,8 @@ def bleu(**kwargs):
         else:
             cache = {}
 
-    # 准备计算的数据
     new_sys, new_ref = [], []
     for sys, ref in zip(sys_lines, ref_lines):
-        # 缓存键包含语言，确保不同语言设置不会混用
         cache_key = json.dumps(("bleu", sys, ref, tgt_lang), ensure_ascii=False)
         if cache_key not in cache:
             new_sys.append(sys)
@@ -306,11 +299,9 @@ def bleu(**kwargs):
             scorer = BLEU(tokenize="zh")
         else:
             scorer = BLEU()
-        # sacrebleu 的 corpus_score 接受列表，这里逐句计算保留句子级分数
         scores = [scorer.corpus_score([s], [[r]]).score for s, r in zip(new_sys, new_ref)]
 
         with cache_lock:
-            # 重新读取可能被其他线程更新的缓存
             if os.path.exists(cache_file):
                 with open(cache_file, 'r') as f:
                     cache = json.load(f)
@@ -320,7 +311,6 @@ def bleu(**kwargs):
             with open(cache_file, 'w') as f:
                 json.dump(cache, f, indent=2, ensure_ascii=False)
 
-    # 获取所有句子的最终分数
     with cache_lock:
         if os.path.exists(cache_file):
             with open(cache_file, 'r') as f:
@@ -357,7 +347,6 @@ def chrf(**kwargs):
 
     logging.info(f"chrF++ cache info: {len(sys_lines)-len(new_sys)}/{len(sys_lines)}")
     if new_sys:
-        # 使用 chrF++ 默认设置：word_order=2, beta=2
         chrf_scorer = CHRF(word_order=2)
         scores = [chrf_scorer.corpus_score([s], [[r]]).score for s, r in zip(new_sys, new_ref)]
 
@@ -403,7 +392,7 @@ def parse_args():
     parser.add_argument("--comet-cache-dir", type=str, default=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'cache', 'comet'))
     parser.add_argument("--comet-saving-dir", type=str, default=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', ''))
     parser.add_argument("--bleurt-ckpt", type=str, default="..../bleurt_model/BLEURT-20")
-    parser.add_argument("--bleurt-cache-dir", type=str, default="....../code/Knt_ours/cache/bleurt")
+    parser.add_argument("--bleurt-cache-dir", type=str, default=".../cache/bleurt")
     parser.add_argument("--metric", type=str, choices=["comet", "xcomet", "comet_qe", "bleurt", "bleu", "chrf"], required=True)
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--cpu", action="store_true")

@@ -7,7 +7,7 @@ from vllm import LLM, SamplingParams
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--model-name-or-path', type=str, required=True)
     parser.add_argument('--input', '-i', type=str, required=True)
     parser.add_argument('--output', '-o', type=str, required=True)
